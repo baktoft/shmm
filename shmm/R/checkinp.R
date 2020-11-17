@@ -78,6 +78,7 @@ check.inp <- function(inp){
         warning('Land matrix not specified! use find.land() if relevant.')
     }
     inp <- set.default(inp, 'land', matrix(FALSE, inp$grid$ny, inp$grid$nx))
+    # inp$land <- matrix(FALSE, inp$grid$ny, inp$grid$nx)
     inp$grid$n <- sum(!inp$land)
     
     # Add generator details

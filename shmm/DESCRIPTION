@@ -13,3 +13,4 @@ Depends:
     TMB
 LinkingTo: TMB, RcppEigen
 RoxygenNote: 5.0.1
+Imports: maps

@@ -25,7 +25,8 @@
 #' @return Noting.
 #' @export
 plotshmm.distr <- function(rep, name='smoo', sleep=0.05, add.map=TRUE){
-    distr <- rep$report[[name]]
+    inp <- rep$inp
+	distr <- rep$report[[name]]
     nt <- dim(distr)[1]
     for (i in 1:nt){
         main <- paste('i =', i, ' Date:', inp$date[i])

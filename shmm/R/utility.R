@@ -110,10 +110,10 @@ set.default <- function(inpin, key, val){
 #' @examples
 #' rep <- test.shmm()
 #' @export
-test.shmm <- function(nobs=40){
+test.shmm <- function(nobs=40, do.viterbi=0, dbg=0){
 
     inp <- list()
-    inp$datatype <- 'xy'
+    inp$datatypes <- 'xy'
 
     # Parameters
     inp$ini$logsdx <- log(6)
@@ -149,8 +149,10 @@ test.shmm <- function(nobs=40){
     # Calculate data likelihood
     inp <- calc.data.likelihood(inp)
     
+	inp$do.viterbi <- do.viterbi
+	
     # Fit shmm
-    rep <- fit.shmm(inp)
+    rep <- fit.shmm(inp, dbg=dbg)
 
     return(rep)
 }
