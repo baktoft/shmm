@@ -1,4 +1,4 @@
-remotes::install_github('baktoft/shmm', ref='dev_2021')
+remotes::install_github('baktoft/shmm/shmm', ref='dev_2021')
 
 rm(list=ls())
 library(shmm)
