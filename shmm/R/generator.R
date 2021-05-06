@@ -69,10 +69,13 @@ add.gen <- function(inp){
 #' @param n Dimension of matrix
 #' @return Sparse identity matrix
 diag.sparse <- function(n){
-    I <- Matrix::Matrix(0, n, n)
-    diag(I) <- rep(1, n)
-    return(I)
+ Matrix::.symDiagonal(n)
 }
+# diag.sparse <- function(n){
+    # I <- Matrix::Matrix(0, n, n)
+    # diag(I) <- rep(1, n)
+    # return(I)
+# }
 
 
 #' @name max.rate
