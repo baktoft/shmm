@@ -1,3 +1,4 @@
+#define TMB_LIB_INIT R_init_shmm
 // Spatial hidden Markov model
 // 07.11.2016 - Added tinyad
 #include <TMB.hpp>
