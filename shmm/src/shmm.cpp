@@ -316,9 +316,14 @@ Type objective_function<Type>::operator() ()
     if (iobs(t) > 0) {
       // Data update
       int ind = (iobs(t)-1);
-      matrix<Type> post = pred.row(t).cwiseProduct(datlik.row(ind)); // Element-wise product
-      psi(ind - 1) = post.sum(); 
-      phi.row(t) = post / (psi(ind - 1) + 1e-20); // Add small value to avoid division by zero
+      vector<Type> d = datlik.row(ind);
+      vectorize::vector<Type> post =
+        vectorize::vector<Type>(d) * vectorize::vector<Type>(predtmp);
+      //vectorize::vector<Type> post = pred.row(t).cwiseProduct(datlik.row(ind)); // Element-wise product
+      psi(ind - 1) = post.sum();
+      vectorize::vector<Type> post_normalized = (post / (psi(ind - 1) + 1e-20)); // Add small value to avoid division by zero
+      vector<Type> qw = post_normalized;
+      phi.row(t) = qw;
     } else {
       // No data update
       phi.row(t) = pred.row(t);
