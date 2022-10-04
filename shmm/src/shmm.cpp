@@ -1,4 +1,8 @@
 #define TMB_LIB_INIT R_init_shmm
+
+#undef  CPPAD_FRAMEWORK
+#define TMBAD_FRAMEWORK
+
 // Spatial hidden Markov model
 // 07.11.2016 - Added tinyad
 #include <TMB.hpp>
@@ -270,14 +274,14 @@ Type objective_function<Type>::operator() ()
 {
   PARAMETER(logDx);        // log diffusion in east-west (x) direction
   PARAMETER(logDy);        // log diffusion in north-south (y) direction
-  DATA_INTEGER(doviterbi); // Type of solver to use
+  //  DATA_INTEGER(doviterbi); // Type of solver to use
   DATA_MATRIX(datlik);     // Data likelihood
-  DATA_INTEGER(solvetype); // Type of solver to use
+  //  DATA_INTEGER(solvetype); // Type of solver to use
   DATA_INTEGER(ns);        // Number of time steps of solver
   DATA_IVECTOR(iobs);      // Indices to which observations correspond
   DATA_SPARSE_MATRIX(I);   // Identity matrix
   DATA_SCALAR(dt);         // Time step
-  DATA_INTEGER(m);         // Number of iterations of uniformization
+  //  DATA_INTEGER(m);         // Number of iterations of uniformization
   DATA_SPARSE_MATRIX(Sns); // North-south generator skeleton
   DATA_SPARSE_MATRIX(Sew); // East-west generator skeleton
 
@@ -334,7 +338,45 @@ Type objective_function<Type>::operator() ()
 
   /* With this construct 'dosmoo' flag becomes redundant. The branch
      is only entered by obj$report(). */
-  // if(isDouble<Type>::value) {
+  if(isDouble<Type>::value) {
+    smoo.resize(ns, n);
+    // Smoothing loop
+    smoo.row(ns-1) = phi.row(ns-1);
+    vector<Type> rho = datlik.row(ns-1);
+    for(int t=1; t < ns; t++) {
+      int tt = ns - t - 1;
+      vector<Type> tmp = ExpGdt(rho); // FIXE: Transpose G if not symmetric!
+      vector<Type> phat = tmp * vector<Type>(phi.row(tt).array()); phat = phat / sum(phat);
+      smoo.row(tt) = phat;
+      rho = tmp * vector<Type>(datlik.row(tt).array()); rho = rho / sum(rho);
+    }
+      // // Time update using uniformization algorithm
+      // vector<Type> predrow = pred.row(tt);
+      // for (int i=0; i < n; i++) {
+      //   predrow(0, i) += 1e-10;
+      // }
+      
+      // matrix<Float> ratio = smoo.row(tt).cwiseQuotient(predrow);
+      //     //matrix<double> asd(1, n);
+      //     //for (int i=0; i < n; i++){
+      //     //asd(0, i) = std::isnan(asDouble(ratio(0, i)));
+      //     //cout 
+      //     //}
+      //     //matrix<double> asd = std::isnan(asDouble(ratio));
+      //     matrix<Float> ratiotmp = ratio;
+      //     if (solvetype == 1){
+      //       ratiotmp = forwardProject(ratio);
+      //     } else if (solvetype == 2) {
+      //       ratiotmp = forwardProjecti(ratio);
+      //     } else error("'solvetype' can by 1 or 2");
+      //     matrix<Float> post = phi.row(tt-1).cwiseProduct(ratiotmp);
+      //     post = post / (post.sum() + 1e-20);
+      //     smoo.row(tt-1) = post;
+      //   }	
+      // }
+
+
+    
   //   shmm::filter_t<double> filter;
   //   filter.eval(asDouble(Dx), asDouble(Dy), true /* do_smoothing */, doviterbi == 1 /* do_viterbi */ );
   //   // Store a subset of distribution for output
@@ -356,13 +398,17 @@ Type objective_function<Type>::operator() ()
   //   vector<double> psi = filter.psi;
   //   vector<int> trackout = filter.track;
   //   // Reports
-  //   REPORT(predout);
-  //   REPORT(phiout);
-  //   REPORT(psi);
-  //   REPORT(smooout); 
+    matrix<Type> predout = pred;
+    matrix<Type> phiout = phi;
+    matrix<Type> psiout = psi;
+    matrix<Type> smooout = smoo;
+    REPORT(predout);
+    REPORT(phiout);
+    REPORT(psi);
+    REPORT(smooout); 
   //   //REPORT(xi);
   //   REPORT(trackout);
-  // }
+  }
   
   return ans;
 
