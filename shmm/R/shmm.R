@@ -124,6 +124,8 @@ make.datlist <- function(inp){
                     m=inp$gen$m,
                     Sns=inp$gen$Sns,
                     Sew=inp$gen$Sew,
+                    Sx=inp$gen$Sx,
+                    Sy=inp$gen$Sy,
                     lgam=inp$gen$lgam)
     return(datlist)
 }
