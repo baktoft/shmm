@@ -268,6 +268,25 @@
 //   }
 // }
 
+template<class Type>
+struct separable_matrix_exponential {
+  matrix<Type> EXPGx;
+  matrix<Type> EXPGy;
+  separable_matrix_exponential(matrix<Type> Gx,
+                               matrix<Type> Gy) {
+    EXPGx = atomic::expm(Gx);
+    EXPGy = atomic::expm(Gy); // Transpose here if not symmetric!
+  }
+  vector<Type> operator()(vector<Type> u) {
+    matrix<Type> um(u);
+    int nx = EXPGx.rows();
+    int ny = EXPGy.rows();
+    um.resize(nx, ny);
+    um = atomic::matmul(EXPGx, um);
+    um = atomic::matmul(um, EXPGy);
+    return um.vec();
+  }
+};
 
 template<class Type>
 Type objective_function<Type>::operator() ()
@@ -284,15 +303,25 @@ Type objective_function<Type>::operator() ()
   //  DATA_INTEGER(m);         // Number of iterations of uniformization
   DATA_SPARSE_MATRIX(Sns); // North-south generator skeleton
   DATA_SPARSE_MATRIX(Sew); // East-west generator skeleton
+  DATA_MATRIX(Sx); // Alternative representation
+  DATA_MATRIX(Sy); // Alternative representation
 
   Type Dx = exp(logDx);
   Type Dy = exp(logDy);
 
-  Eigen::SparseMatrix<Type> G = Dx*Sew + Dy*Sns;  // Make generator
-
   // Matrix exponential
-  Eigen::SparseMatrix<Type> Gdt = G * dt;
-  sparse_matrix_exponential::expQ<Type> ExpGdt(Gdt);
+
+  // Sparse case:
+  if (false) {
+    Eigen::SparseMatrix<Type> G = Dx*Sew + Dy*Sns;  // Make generator
+    Eigen::SparseMatrix<Type> Gdt = G * dt;
+    sparse_matrix_exponential::expQ<Type> ExpGdt(Gdt);
+  }
+
+  // Dense separable case
+  matrix<Type> Gx = (Dx*dt)*Sx;
+  matrix<Type> Gy = (Dy*dt)*Sy;
+  separable_matrix_exponential<Type> ExpGdt(Gx, Gy);
   
   // ==================================== HMM FILTER
   matrix<Type> pred;
