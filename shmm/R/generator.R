@@ -59,10 +59,19 @@ add.gen <- function(inp){
     }
 
     inp$gen$lgam <- lgamma(2:(inp$gen$m+2)) # Factorial
+
+    ## Kasper: Add coordinate-wise laplace operators (for separable representation of generator)
+    inp$gen$Sx <- Lap(nx)
+    inp$gen$Sy <- Lap(ny)
     
     return(inp)
 }
 
+Lap <- function(n) {
+    ans <- outer(1:n,1:n,function(i,j) (abs(i-j) == 1) )
+    diag(ans) <- -rowSums(ans)
+    ans
+}
 
 #' @name diag.sparse
 #' @title Create sparse identity matrix
