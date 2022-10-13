@@ -26,6 +26,8 @@
 #' rep <- fit.shmm(inp)
 #' @import TMB
 fit.shmm <- function(inp, dbg=0){
+    ## FIXME: Reorder arrays to 'good' order before passing to TMB
+    inp$datlik <- reorder_time(inp$datlik, last=TRUE)
     # Check input list
     inp <- check.inp(inp)
     rep <- list(inp=inp)
@@ -45,6 +47,8 @@ fit.shmm <- function(inp, dbg=0){
     
     cat('\nSave report...')
     rep$reportraw <- obj$report()
+    ## FIXME: Reorder arrays back to 'bad' order
+    rep$reportraw <- reorder_time(rep$reportraw, last=FALSE)
     rep$report <- list()
     for (nm in names(rep$reportraw)){
         vecdistr <- rep$reportraw[[nm]]
@@ -100,6 +104,8 @@ fit.shmm <- function(inp, dbg=0){
 reorder_time <- function(x, last=TRUE) {
     if (is.list(x))
         return (lapply(x, reorder_time, last=last))
+    if (is.null(dim(x)))
+        return (x)
     p <- 1:length(dim(x))
     if (last)
         p <- c(p[-1], p[1])

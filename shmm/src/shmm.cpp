@@ -329,37 +329,37 @@ Type objective_function<Type>::operator() ()
   vector<Type> psi;
   matrix<Type> smoo; // output from smoothing
   vector<int> track;
-  int nobs = datlik.rows();
-  int n = datlik.cols();
+  int nobs = datlik.cols();
+  int n = datlik.rows();
   // Initialise HMM grids
-  pred.resize(ns, n);
-  phi.resize(ns, n);
+  pred.resize(n, ns);
+  phi.resize(n, ns);
   psi.resize(nobs - 1);
   // First state is at time of first observation
-  pred.row(0) = datlik.row(0) / datlik.row(0).sum();
-  phi.row(0) = pred.row(0);
+  pred.col(0) = datlik.col(0) / datlik.col(0).sum();
+  phi.col(0) = pred.col(0);
   // Filter loop
   for(int t=1; t<ns; t++) {
     Rcout << "t=" << t << "\n";
     // Time update using uniformization algorithm
-    vector<Type> svec = phi.row(t-1);
+    vector<Type> svec = phi.col(t-1);
     //vector<Type> predtmp = svec;
     vector<Type> predtmp = ExpGdt(svec);
-    pred.row(t) = predtmp; // Store prediction
+    pred.col(t) = predtmp; // Store prediction
     if (iobs(t) > 0) {
       // Data update
       int ind = (iobs(t)-1);
-      vector<Type> d = datlik.row(ind);
+      vector<Type> d = datlik.col(ind);
       vectorize::vector<Type> post =
         vectorize::vector<Type>(d) * vectorize::vector<Type>(predtmp);
-      //vectorize::vector<Type> post = pred.row(t).cwiseProduct(datlik.row(ind)); // Element-wise product
+      //vectorize::vector<Type> post = pred.col(t).cwiseProduct(datlik.col(ind)); // Element-wise product
       psi(ind - 1) = post.sum();
       vectorize::vector<Type> post_normalized = (post / (psi(ind - 1) + 1e-20)); // Add small value to avoid division by zero
       vector<Type> qw = post_normalized;
-      phi.row(t) = qw;
+      phi.col(t) = qw;
     } else {
       // No data update
-      phi.row(t) = pred.row(t);
+      phi.col(t) = pred.col(t);
     }
   }
   // Negative log likelihood
@@ -368,24 +368,24 @@ Type objective_function<Type>::operator() ()
   /* With this construct 'dosmoo' flag becomes redundant. The branch
      is only entered by obj$report(). */
   if(isDouble<Type>::value) {
-    smoo.resize(ns, n);
+    smoo.resize(n, ns);
     // Smoothing loop
-    smoo.row(ns-1) = phi.row(ns-1);
-    vector<Type> rho = datlik.row(ns-1);
+    smoo.col(ns-1) = phi.col(ns-1);
+    vector<Type> rho = datlik.col(ns-1);
     for(int t=1; t < ns; t++) {
       int tt = ns - t - 1;
       vector<Type> tmp = ExpGdt(rho); // FIXE: Transpose G if not symmetric!
-      vector<Type> phat = tmp * vector<Type>(phi.row(tt).array()); phat = phat / sum(phat);
-      smoo.row(tt) = phat;
-      rho = tmp * vector<Type>(datlik.row(tt).array()); rho = rho / sum(rho);
+      vector<Type> phat = tmp * vector<Type>(phi.col(tt).array()); phat = phat / sum(phat);
+      smoo.col(tt) = phat;
+      rho = tmp * vector<Type>(datlik.col(tt).array()); rho = rho / sum(rho);
     }
       // // Time update using uniformization algorithm
-      // vector<Type> predrow = pred.row(tt);
+      // vector<Type> predcol = pred.col(tt);
       // for (int i=0; i < n; i++) {
-      //   predrow(0, i) += 1e-10;
+      //   predcol(0, i) += 1e-10;
       // }
       
-      // matrix<Float> ratio = smoo.row(tt).cwiseQuotient(predrow);
+      // matrix<Float> ratio = smoo.col(tt).cwiseQuotient(predcol);
       //     //matrix<double> asd(1, n);
       //     //for (int i=0; i < n; i++){
       //     //asd(0, i) = std::isnan(asDouble(ratio(0, i)));
@@ -398,9 +398,9 @@ Type objective_function<Type>::operator() ()
       //     } else if (solvetype == 2) {
       //       ratiotmp = forwardProjecti(ratio);
       //     } else error("'solvetype' can by 1 or 2");
-      //     matrix<Float> post = phi.row(tt-1).cwiseProduct(ratiotmp);
+      //     matrix<Float> post = phi.col(tt-1).cwiseProduct(ratiotmp);
       //     post = post / (post.sum() + 1e-20);
-      //     smoo.row(tt-1) = post;
+      //     smoo.col(tt-1) = post;
       //   }	
       // }
 
@@ -409,8 +409,8 @@ Type objective_function<Type>::operator() ()
   //   shmm::filter_t<double> filter;
   //   filter.eval(asDouble(Dx), asDouble(Dy), true /* do_smoothing */, doviterbi == 1 /* do_viterbi */ );
   //   // Store a subset of distribution for output
-  //   int nobs = shmm::datlik.rows();
-  //   int n = shmm::datlik.cols();
+  //   int nobs = shmm::datlik.cols();
+  //   int n = shmm::datlik.rows();
   //   int ns = shmm::ns;
   //   vector<int> iobs = shmm::iobs;
   //   matrix<double> smooout(nobs, n);
@@ -419,9 +419,9 @@ Type objective_function<Type>::operator() ()
   //   for(int t=0; t<ns; t++){
   //     if (iobs(t) > 0){
   //       int ind = (iobs(t)-1);
-  //       smooout.row(ind) = filter.smoo.row(t);
-  //       phiout.row(ind) = filter.phi.row(t);
-  //       predout.row(ind) = filter.pred.row(t);
+  //       smooout.col(ind) = filter.smoo.col(t);
+  //       phiout.col(ind) = filter.phi.col(t);
+  //       predout.col(ind) = filter.pred.col(t);
   //     }
   //   }
   //   vector<double> psi = filter.psi;
