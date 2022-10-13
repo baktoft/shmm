@@ -77,6 +77,36 @@ fit.shmm <- function(inp, dbg=0){
     return(rep)
 }
 
+## Kasper: All 3D arrays in original code are badly ordered as (time, x, y). On TMB side, all arrays should ideally have the time dimension slowest running i.e., come *last*.
+## > lapply(inp$datlik,dim)
+## $sst
+## [1] 217 440 200
+## $bathy
+## [1] 217 440 200
+## $sun
+## [1] 217 440 200
+## $release
+## [1]   1 440 200
+## $recapture
+## [1]   1 440 200
+## $all
+## [1]   217 88000
+## The following function solves this problem. Example:
+## > tmp <- inp$datlik
+## > tmp <- reorder_time(tmp,TRUE)  ## Change to good order
+## > tmp <- reorder_time(tmp,FALSE) ## Change back to bad order
+## > identical(tmp, inp$datlik)
+## [1] TRUE
+reorder_time <- function(x, last=TRUE) {
+    if (is.list(x))
+        return (lapply(x, reorder_time, last=last))
+    p <- 1:length(dim(x))
+    if (last)
+        p <- c(p[-1], p[1])
+    else
+        p <- c(p[length(p)], p[-length(p)])
+    aperm(x, p)
+}
 
 #' @name make.obj
 #' @title Create TMB obj using TMB::MakeADFun and squelch screen printing.
