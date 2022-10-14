@@ -331,30 +331,55 @@ Type objective_function<Type>::operator() ()
         keep[i] = 0; map[i] = 0;
       }
     }
-    /* Create 'residual' map */
+    /* Manually calculate dnorm to keep memory low:
+
+       The default implementation does this:
+
+       x = (x - mean) / sd;
+       logres = -log(Type(sqrt(2*M_PI)) * sd) - Type(.5) * x * x;
+
+       We need the special case where mean=0 and the x vector is constant:
+
+       -log(Type(sqrt(2*M_PI)) - log(sd) - Type(.5) * x * x / sd;
+       (-.5 * x * x) / sd - log(sd) - log(sqrt(2*M_PI)
+
+       in addition we need to multiply by 'keep':
+
+       (-.5 * x * x * keep) / sd - ( log(sd) + log(sqrt(2*M_PI) ) * keep
+
+       We notice that '(-.5 * x * x * keep)' is constant, so can be
+       calculated without adding anything to the tape.
+
+    */
+
+
+    /* Create partially calculated dnorm array (the constant):  */
     array<Type> res(map.dim);
     for (int k=0; k<map.cols(); k++) { // loop across k=datatype
       array<Type> submap = map.col(k); // (x, y, time)
       for (int j=0; j<submap.cols(); j++) { // loop across j=time
-        res.col(k).col(j) = obs(j, k) - submap.col(j); // (x, y)
+        res.col(k).col(j) = obs(j, k) - submap.col(j); // x-mu
+        res.col(k).col(j) = res.col(k).col(j) * res.col(k).col(j); // (x-mu)*(x-mu)
+        res.col(k).col(j) = Type(-.5)*res.col(k).col(j); // -.5*(x-mu)*(x-mu)
+        res.col(k).col(j) = res.col(k).col(j) * keep.col(k).col(j);
       }
     }
+    /* Sum up terms using vectorized operations */
     typedef vectorize::vector<Type> vec;
     vec tot;
     for (int k=0; k<map.cols(); k++) { // loop across k=datatype
-      vec tmp(res.col(k));
-      vec loglik = dnorm(tmp, Type(0), sd[k], true) * vec(keep.col(k));
+      vec tmp = vec(res.col(k)) / sd[k] + ( -logsd[k] - log(sqrt(2.*M_PI)) ) * vec(keep.col(k));
       if (k==0)
-        tot = loglik;
+        tot = tmp;
       else
-        tot += loglik;
+        tot += tmp;
     }
     tot = exp(tot); // (x,y,time)
     // TODO: Add constraint
     vector<Type> vtot = tot;
-    matrix<Type> mtot ( vtot );
-    mtot.resize(datlik.rows(), datlik.cols());
-    datlik = mtot;
+    datlik.array() = vtot;
+    vector<int> d = map.dim;
+    datlik.resize(d[0]*d[1], d[2]);
     //tot = tot * vec();
   }
 
