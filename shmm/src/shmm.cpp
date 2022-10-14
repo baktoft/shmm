@@ -309,6 +309,55 @@ Type objective_function<Type>::operator() ()
   Type Dx = exp(logDx);
   Type Dy = exp(logDy);
 
+  DATA_INTEGER(rawdat); // Rawdata available?
+
+  if (rawdat) {
+    /*
+      ## Raw Data layout:
+      ## - 4D array 'map' indexed by (x, y, time, datatype)
+      ## - 2D array 'obs' indexed by (time, datatype)
+      ## - 2D array 'con' indexed by (x, y)
+    */
+    DATA_ARRAY(map);
+    DATA_ARRAY(obs);
+    DATA_VECTOR(con);
+    PARAMETER_VECTOR(logsd); // obs
+    vector<Type> sd = exp(logsd);
+    array<Type> keep(map.dim);
+    for (int i=0; i<map.size(); i++) {
+      if (R_FINITE(asDouble(map[i]))) {
+        keep[i] = 1;
+      } else {
+        keep[i] = 0; map[i] = 0;
+      }
+    }
+    /* Create 'residual' map */
+    array<Type> res(map.dim);
+    for (int k=0; k<map.cols(); k++) { // loop across k=datatype
+      array<Type> submap = map.col(k); // (x, y, time)
+      for (int j=0; j<submap.cols(); j++) { // loop across j=time
+        res.col(k).col(j) = obs(j, k) - submap.col(j); // (x, y)
+      }
+    }
+    typedef vectorize::vector<Type> vec;
+    vec tot;
+    for (int k=0; k<map.cols(); k++) { // loop across k=datatype
+      vec tmp(res.col(k));
+      vec loglik = dnorm(tmp, Type(0), sd[k], true) * vec(keep.col(k));
+      if (k==0)
+        tot = loglik;
+      else
+        tot += loglik;
+    }
+    tot = exp(tot); // (x,y,time)
+    // TODO: Add constraint
+    vector<Type> vtot = tot;
+    matrix<Type> mtot ( vtot );
+    mtot.resize(datlik.rows(), datlik.cols());
+    datlik = mtot;
+    //tot = tot * vec();
+  }
+
   // Matrix exponential
 
   // Sparse case:

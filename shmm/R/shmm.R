@@ -163,6 +163,9 @@ make.datlist <- function(inp){
                     Sx=inp$gen$Sx,
                     Sy=inp$gen$Sy,
                     lgam=inp$gen$lgam)
+    ## Add 'rawdat' flag + rawdat if present
+    datlist$rawdat <- !is.null(inp$rawdat)
+    datlist <- c(datlist, inp$rawdat)
     return(datlist)
 }
 
@@ -175,6 +178,10 @@ make.datlist <- function(inp){
 make.parlist <- function(inp){
     parlist <- list(logDx=log(inp$gen$Dx),
                     logDy=log(inp$gen$Dy))
+    if (!is.null(inp$rawdat)) {
+        k <- ncol(inp$rawdat$obs)
+        parlist$logsd <- rep(0, k)
+    }
     return(parlist)
 }
 
