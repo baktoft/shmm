@@ -324,11 +324,21 @@ Type objective_function<Type>::operator() ()
     PARAMETER_VECTOR(logsd); // obs
     vector<Type> sd = exp(logsd);
     array<Type> keep(map.dim);
+    // Handle NAs in map
     for (int i=0; i<map.size(); i++) {
       if (R_FINITE(asDouble(map[i]))) {
         keep[i] = 1;
       } else {
         keep[i] = 0; map[i] = 0;
+      }
+    }
+    // Handle NAs in obs
+    for (int j=0; j<obs.cols(); j++) {
+      for (int i=0; i<obs.rows(); i++) {
+        if (!R_FINITE(asDouble(obs(i,j)))) {
+          keep.col(j).col(i).setZero();
+          obs(i, j) = 0;
+        }
       }
     }
     /* Manually calculate dnorm to keep memory low:
@@ -377,9 +387,15 @@ Type objective_function<Type>::operator() ()
     tot = exp(tot); // (x,y,time)
     // TODO: Add constraint
     vector<Type> vtot = tot;
+    // Store the old datlik begin and end
+    vector<Type> datlik0 = datlik.col(0);
+    vector<Type> datlik1 = datlik.col(datlik.cols()-1);
     datlik.array() = vtot;
     vector<int> d = map.dim;
     datlik.resize(d[0]*d[1], d[2]);
+    // overwrite
+    datlik.col(0) = datlik0;
+    datlik.col(datlik.cols()-1) = datlik1;
     //tot = tot * vec();
   }
 
@@ -428,6 +444,7 @@ Type objective_function<Type>::operator() ()
         vectorize::vector<Type>(d) * vectorize::vector<Type>(predtmp);
       //vectorize::vector<Type> post = pred.col(t).cwiseProduct(datlik.col(ind)); // Element-wise product
       psi(ind - 1) = post.sum();
+      Rcout << psi(ind - 1) << "\n";
       vectorize::vector<Type> post_normalized = (post / (psi(ind - 1) + 1e-20)); // Add small value to avoid division by zero
       vector<Type> qw = post_normalized;
       phi.col(t) = qw;
