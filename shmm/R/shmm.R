@@ -44,7 +44,7 @@ fit.shmm <- function(inp, dbg=0){
         nouse <- obj$fn() # Evaluate fn for initial parameters
     }
     #rep$do.smoo <- inp$do.smoo
-    
+    TMB::FreeADFun(obj) ## Free AD tapes
     cat('\nSave report...')
     rep$reportraw <- obj$report()
     ## FIXME: Reorder arrays back to 'bad' order
@@ -129,10 +129,12 @@ make.obj <- function(inp, phase=1){
                           parameters=parlist,
                           random=NULL,
                           DLL=inp$scriptname,
-                          checkParameterOrder=FALSE)
+                          checkParameterOrder=FALSE,
+                          map=inp$map)
     # Make TMB quiet
     TMB:::config(trace.optimize=0, DLL=inp$scriptname)
-    verbose <- FALSE
+    verbose <- inp$verbose
+    if (is.null(verbose)) verbose <- TRUE
     obj$env$tracemgc <- verbose
     obj$env$inner.control$trace <- verbose
     obj$env$silent <- ! verbose
@@ -176,6 +178,8 @@ make.datlist <- function(inp){
 #' @return List to be used as parameter input to TMB::MakeADFun.
 #' @export
 make.parlist <- function(inp){
+    if (is.list(inp$parlist))
+        return (inp$parlist)
     parlist <- list(logDx=log(inp$gen$Dx),
                     logDy=log(inp$gen$Dy))
     if (!is.null(inp$rawdat)) {
