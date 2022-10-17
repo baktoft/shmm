@@ -45,6 +45,7 @@ fit.shmm <- function(inp, dbg=0){
     }
     #rep$do.smoo <- inp$do.smoo
     TMB::FreeADFun(obj) ## Free AD tapes
+    obj$env$type <- setdiff(obj$env$type, "ADFun") ## And prevent retaping (!)
     cat('\nSave report...')
     rep$reportraw <- obj$report()
     ## FIXME: Reorder arrays back to 'bad' order

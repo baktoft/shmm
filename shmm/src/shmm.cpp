@@ -378,14 +378,13 @@ Type objective_function<Type>::operator() ()
     typedef vectorize::vector<Type> vec;
     vec tot;
     for (int k=0; k<map.cols(); k++) { // loop across k=datatype
-      vec tmp = vec(res.col(k)) / sd[k] + ( -logsd[k] - log(sqrt(2.*M_PI)) ) * vec(keep.col(k));
+      vec tmp = vec(res.col(k)) / (sd[k]*sd[k]) + ( -logsd[k] - log(sqrt(2.*M_PI)) ) * vec(keep.col(k));
       if (k==0)
         tot = tmp;
       else
         tot += tmp;
     }
     tot = exp(tot); // (x,y,time)
-    // TODO: Add constraint
     vector<Type> vtot = tot;
     // Store the old datlik begin and end
     vector<Type> datlik0 = datlik.col(0);
@@ -397,8 +396,16 @@ Type objective_function<Type>::operator() ()
     datlik.col(0) = datlik0;
     datlik.col(datlik.cols()-1) = datlik1;
     //tot = tot * vec();
+    // Add constraint
+    for (int k=0; k<datlik.cols(); k++) {
+      vector<Type> qw = datlik.col(k).array();
+      vec tmp = vec(qw) * vec(con);
+      vector<Type> tmp2 = tmp;
+      datlik.col(k).array() = tmp2;
+    }
   }
 
+  REPORT(datlik); // For debugging
   // Matrix exponential
 
   // Sparse case:
