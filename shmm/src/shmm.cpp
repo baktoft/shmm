@@ -303,12 +303,17 @@ struct data_likelihood {
   vector<Type> operator()(vector<Type> parms) {
     typedef vectorize::vector<Type> vec;
     int n = parms.size();
-    vector<Type> sd(n-1);
-    for (int i=0; i<sd.size(); i++) sd[i] = parms[i];
+    vector<Type> sd( (n-1) / 2 );
+    vector<Type> bias( (n-1) / 2 );
+    for (int i=0; i<sd.size(); i++) {
+      sd[i] = parms[i];
+      bias[i] = parms[i+sd.size()];
+    }
     Type time = parms[n-1]; // last
     // Load data
     matrix<Type> m = getData(map, time);
     vector<Type> o = getData(obs, time);
+    o = o - bias;
     int ntyp = o.size();
     m.resize(m.size() / ntyp, ntyp);
     matrix<Type> m_keep = getData(map_keep, time);
@@ -382,11 +387,14 @@ Type objective_function<Type>::operator() ()
       ## - 2D array 'con' indexed by (x, y)
     */
     PARAMETER_VECTOR(logsd); // obs
+    PARAMETER_VECTOR(bias); // obs
     vector<Type> sd = exp(logsd);
     data_likelihood<TMBad::ad_aug> dlik(this->data);
     atomic::AtomicLocal<data_likelihood<TMBad::ad_aug> > F(dlik);
-    vector<Type> parms = sd;
-    parms.conservativeResize(parms.size() + 1);
+    vector<Type> parms(sd.size() + bias.size() + 1);
+    for (int i=0; i<sd.size(); i++) {
+      parms[i] = sd[i]; parms[i+sd.size()] = bias[i];
+    }
     // Keep the old datlik begin and end for now (FIXME)
     for (int i=1; i<dlik.ntime-1; i++) {
       parms[parms.size()-1] = Type(i);

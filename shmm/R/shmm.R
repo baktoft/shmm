@@ -186,6 +186,7 @@ make.parlist <- function(inp){
     if (!is.null(inp$rawdat)) {
         k <- length(inp$rawdat$obs[[1]])
         parlist$logsd <- rep(0, k)
+        parlist$bias <- rep(0, k)
     }
     return(parlist)
 }
