@@ -268,6 +268,74 @@
 //   }
 // }
 
+
+template<class Type>
+struct data_likelihood {
+  // PARAMETER_VECTOR(sd); // sd by data type
+  // DATA_ARRAY(map); // 3D array indexed by (x,y,datatype)
+  // double* map;
+  SEXP map;  // List of maps by time
+  SEXP obs;  // List of observations by time
+  SEXP con;
+  int ntime;
+  data_likelihood(SEXP data) {
+    map = getListElement(data, "map"); // list
+    obs = getListElement(data, "obs"); // list
+    if (LENGTH(map) != LENGTH(obs)) Rf_error("length(maps/obs) mismatch");
+    con = getListElement(data, "con"); // matrix
+    ntime = LENGTH(map);
+  }
+  // Get list elt
+  vector<Type> getData(SEXP x, Type i) {
+    Type t1 = atomic::dynamic_data::sexp_to_double(x);
+    Type t2 = atomic::dynamic_data::list_lookup_by_index(t1, i);
+    return atomic::dynamic_data::sexp_to_vector(t2);
+  }
+  // Get matrix
+  vector<Type> getData(SEXP x) {
+    Type t1 = atomic::dynamic_data::sexp_to_double(x);
+    return atomic::dynamic_data::sexp_to_vector(t1);
+  }
+  // NA handlers
+  template<class V>
+  V na2zero(V x) {
+    for (int i=0; i<x.size(); i++)
+      //x[i] = CppAD::CondExpEq(x[i], x[i], x[i], Type(0));
+      x(i) = CppAD::CondExpEq(x(i), x(i), x(i), Type(0));
+    return x;
+  }
+  template<class V>
+  V not_na(V x) {
+    for (int i=0; i<x.size(); i++)
+      //x[i] = CppAD::CondExpEq(x[i], x[i], Type(1), Type(0));
+      x(i) = CppAD::CondExpEq(x(i), x(i), Type(1), Type(0));
+    return x;
+  }
+  vector<Type> operator()(vector<Type> parms) {
+    int n = parms.size();
+    vector<Type> sd(n-1);
+    for (int i=0; i<sd.size(); i++) sd[i] = parms[i];
+    Type time = parms[n-1]; // last
+    // Load data
+    matrix<Type> m_ = getData(map, time);
+    vector<Type> o_ = getData(obs, time);
+    int ntyp = o_.size();
+    m_.resize(m_.size() / ntyp, ntyp);
+    matrix<Type> m = na2zero(m_);
+    vector<Type> o = na2zero(o_);
+    matrix<Type> m_indicator = not_na(m_);
+    vector<Type> o_indicator = not_na(o_);
+    vector<Type> ans(m.rows()); ans.setZero();
+    for (int i=0; i<ntyp; i++) {
+      ans += dnorm(o[i], vector<Type>(m.col(i)), sd[i], true) * o_indicator[i] * m_indicator.col(i).array();
+    }
+    ans = exp(ans);
+    vector<Type> c = getData(con);
+    ans = ans * c;
+    return ans;
+  }
+};
+
 template<class Type>
 struct separable_matrix_exponential {
   matrix<Type> EXPGx;
@@ -314,95 +382,22 @@ Type objective_function<Type>::operator() ()
   if (rawdat) {
     /*
       ## Raw Data layout:
-      ## - 4D array 'map' indexed by (x, y, time, datatype)
-      ## - 2D array 'obs' indexed by (time, datatype)
+      ## - list (by time) of 3D arrays 'map' each indexed by (x, y, datatype)
+      ## - list (by time) of 1D arrays 'obs' each indexed by (datatype)
       ## - 2D array 'con' indexed by (x, y)
     */
-    DATA_ARRAY(map);
-    DATA_ARRAY(obs);
-    DATA_VECTOR(con);
     PARAMETER_VECTOR(logsd); // obs
     vector<Type> sd = exp(logsd);
-    array<Type> keep(map.dim);
-    // Handle NAs in map
-    for (int i=0; i<map.size(); i++) {
-      if (R_FINITE(asDouble(map[i]))) {
-        keep[i] = 1;
-      } else {
-        keep[i] = 0; map[i] = 0;
-      }
+    data_likelihood<TMBad::ad_aug> dlik(this->data);
+    atomic::AtomicLocal<data_likelihood<TMBad::ad_aug> > F(dlik);
+    vector<Type> parms = sd;
+    parms.conservativeResize(parms.size() + 1);
+    // Keep the old datlik begin and end for now (FIXME)
+    for (int i=1; i<dlik.ntime-1; i++) {
+      parms[parms.size()-1] = Type(i);
+      datlik.col(i).array() = F(parms);
     }
-    // Handle NAs in obs
-    for (int j=0; j<obs.cols(); j++) {
-      for (int i=0; i<obs.rows(); i++) {
-        if (!R_FINITE(asDouble(obs(i,j)))) {
-          keep.col(j).col(i).setZero();
-          obs(i, j) = 0;
-        }
-      }
-    }
-    /* Manually calculate dnorm to keep memory low:
-
-       The default implementation does this:
-
-       x = (x - mean) / sd;
-       logres = -log(Type(sqrt(2*M_PI)) * sd) - Type(.5) * x * x;
-
-       We need the special case where mean=0 and the x vector is constant:
-
-       -log(Type(sqrt(2*M_PI)) - log(sd) - Type(.5) * x * x / sd;
-       (-.5 * x * x) / sd - log(sd) - log(sqrt(2*M_PI)
-
-       in addition we need to multiply by 'keep':
-
-       (-.5 * x * x * keep) / sd - ( log(sd) + log(sqrt(2*M_PI) ) * keep
-
-       We notice that '(-.5 * x * x * keep)' is constant, so can be
-       calculated without adding anything to the tape.
-
-    */
-
-
-    /* Create partially calculated dnorm array (the constant):  */
-    array<Type> res(map.dim);
-    for (int k=0; k<map.cols(); k++) { // loop across k=datatype
-      array<Type> submap = map.col(k); // (x, y, time)
-      for (int j=0; j<submap.cols(); j++) { // loop across j=time
-        res.col(k).col(j) = obs(j, k) - submap.col(j); // x-mu
-        res.col(k).col(j) = res.col(k).col(j) * res.col(k).col(j); // (x-mu)*(x-mu)
-        res.col(k).col(j) = Type(-.5)*res.col(k).col(j); // -.5*(x-mu)*(x-mu)
-        res.col(k).col(j) = res.col(k).col(j) * keep.col(k).col(j);
-      }
-    }
-    /* Sum up terms using vectorized operations */
-    typedef vectorize::vector<Type> vec;
-    vec tot;
-    for (int k=0; k<map.cols(); k++) { // loop across k=datatype
-      vec tmp = vec(res.col(k)) / (sd[k]*sd[k]) + ( -logsd[k] - log(sqrt(2.*M_PI)) ) * vec(keep.col(k));
-      if (k==0)
-        tot = tmp;
-      else
-        tot += tmp;
-    }
-    tot = exp(tot); // (x,y,time)
-    vector<Type> vtot = tot;
     // Store the old datlik begin and end
-    vector<Type> datlik0 = datlik.col(0);
-    vector<Type> datlik1 = datlik.col(datlik.cols()-1);
-    datlik.array() = vtot;
-    vector<int> d = map.dim;
-    datlik.resize(d[0]*d[1], d[2]);
-    // overwrite
-    datlik.col(0) = datlik0;
-    datlik.col(datlik.cols()-1) = datlik1;
-    //tot = tot * vec();
-    // Add constraint
-    for (int k=0; k<datlik.cols(); k++) {
-      vector<Type> qw = datlik.col(k).array();
-      vec tmp = vec(qw) * vec(con);
-      vector<Type> tmp2 = tmp;
-      datlik.col(k).array() = tmp2;
-    }
   }
 
   REPORT(datlik); // For debugging

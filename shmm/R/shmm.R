@@ -184,7 +184,7 @@ make.parlist <- function(inp){
     parlist <- list(logDx=log(inp$gen$Dx),
                     logDy=log(inp$gen$Dy))
     if (!is.null(inp$rawdat)) {
-        k <- ncol(inp$rawdat$obs)
+        k <- length(inp$rawdat$obs[[1]])
         parlist$logsd <- rep(0, k)
     }
     return(parlist)
