@@ -275,12 +275,16 @@ struct data_likelihood {
   // DATA_ARRAY(map); // 3D array indexed by (x,y,datatype)
   // double* map;
   SEXP map;  // List of maps by time
+  SEXP map_keep;
   SEXP obs;  // List of observations by time
+  SEXP obs_keep;
   SEXP con;
   int ntime;
   data_likelihood(SEXP data) {
     map = getListElement(data, "map"); // list
     obs = getListElement(data, "obs"); // list
+    map_keep = getListElement(data, "map_keep"); // list
+    obs_keep = getListElement(data, "obs_keep"); // list
     if (LENGTH(map) != LENGTH(obs)) Rf_error("length(maps/obs) mismatch");
     con = getListElement(data, "con"); // matrix
     ntime = LENGTH(map);
@@ -296,41 +300,32 @@ struct data_likelihood {
     Type t1 = atomic::dynamic_data::sexp_to_double(x);
     return atomic::dynamic_data::sexp_to_vector(t1);
   }
-  // NA handlers
-  template<class V>
-  V na2zero(V x) {
-    for (int i=0; i<x.size(); i++)
-      //x[i] = CppAD::CondExpEq(x[i], x[i], x[i], Type(0));
-      x(i) = CppAD::CondExpEq(x(i), x(i), x(i), Type(0));
-    return x;
-  }
-  template<class V>
-  V not_na(V x) {
-    for (int i=0; i<x.size(); i++)
-      //x[i] = CppAD::CondExpEq(x[i], x[i], Type(1), Type(0));
-      x(i) = CppAD::CondExpEq(x(i), x(i), Type(1), Type(0));
-    return x;
-  }
   vector<Type> operator()(vector<Type> parms) {
+    typedef vectorize::vector<Type> vec;
     int n = parms.size();
     vector<Type> sd(n-1);
     for (int i=0; i<sd.size(); i++) sd[i] = parms[i];
     Type time = parms[n-1]; // last
     // Load data
-    matrix<Type> m_ = getData(map, time);
-    vector<Type> o_ = getData(obs, time);
-    int ntyp = o_.size();
-    m_.resize(m_.size() / ntyp, ntyp);
-    matrix<Type> m = na2zero(m_);
-    vector<Type> o = na2zero(o_);
-    matrix<Type> m_indicator = not_na(m_);
-    vector<Type> o_indicator = not_na(o_);
-    vector<Type> ans(m.rows()); ans.setZero();
+    matrix<Type> m = getData(map, time);
+    vector<Type> o = getData(obs, time);
+    int ntyp = o.size();
+    m.resize(m.size() / ntyp, ntyp);
+    matrix<Type> m_keep = getData(map_keep, time);
+    vector<Type> o_keep = getData(obs_keep, time);
+    m_keep.resize(m.size() / ntyp, ntyp);
+    vec ans;
     for (int i=0; i<ntyp; i++) {
-      ans += dnorm(o[i], vector<Type>(m.col(i)), sd[i], true) * o_indicator[i] * m_indicator.col(i).array();
+      vec m_col(m.col(i));
+      vec m_keep_col(m_keep.col(i));
+      vec tmp = dnorm(m_col, o[i], sd[i], true) * o_keep[i] * m_keep_col;
+      if (i==0)
+        ans = tmp;
+      else
+        ans += tmp;
     }
     ans = exp(ans);
-    vector<Type> c = getData(con);
+    vec c = getData(con);
     ans = ans * c;
     return ans;
   }
