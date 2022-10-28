@@ -277,12 +277,20 @@ struct concat_traits {
   T* ptr(T &x) { return &x; }
   size_t size(T &x) { return 1; }
 };
-template<class T>
-struct concat_traits<vector<T> > {
-  typedef T value_type;
-  T* ptr(vector<T> &x) { return x.data(); }
-  size_t size(vector<T> &x) { return x.size(); }
+template<class VT>
+struct concat_traits_vector {
+  typedef typename VT::value_type value_type;
+  typedef value_type T;
+  T* ptr(VT &x) { return x.data(); }
+  size_t size(VT &x) { return x.size(); }
 };
+template<class T>
+struct concat_traits<vector<T> > : concat_traits_vector<vector<T> > {};
+template<class T>
+struct concat_traits<matrix<T> > : concat_traits_vector<matrix<T> > {};
+template<class T>
+struct concat_traits<array<T> > : concat_traits_vector<array<T> > {};
+
 template<class S=void, class...Ts>
 struct Concat {
   S& cur;
