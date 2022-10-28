@@ -269,6 +269,73 @@
 // }
 
 
+/* ================================================ */
+
+template<class T>
+struct concat_traits {
+  typedef T value_type;
+  T* ptr(T &x) { return &x; }
+  size_t size(T &x) { return 1; }
+};
+template<class T>
+struct concat_traits<vector<T> > {
+  typedef T value_type;
+  T* ptr(vector<T> &x) { return x.data(); }
+  size_t size(vector<T> &x) { return x.size(); }
+};
+template<class S=void, class...Ts>
+struct Concat {
+  S& cur;
+  Concat<Ts...> next;
+  typedef typename concat_traits<S>::value_type value_type;
+  void assign_from(const value_type* x) {
+    value_type* dest = concat_traits<S>().ptr(cur);
+    size_t n = concat_traits<S>().size(cur);
+    for (size_t i=0; i<n; i++) {dest[i] = *x; x++;}
+    next.assign_from(x);
+  }
+  void assign_to(value_type* x) {
+    value_type* orig = concat_traits<S>().ptr(cur);
+    size_t n = concat_traits<S>().size(cur);
+    for (size_t i=0; i<n; i++) {*x = orig[i]; x++;}
+    next.assign_to(x);
+  }
+  size_t size() {return concat_traits<S>().size(cur) + next.size(); }
+  operator vector<value_type>() {
+    vector<value_type> ans(size());
+    assign_to(ans.data());
+    return ans;
+  }
+  Concat& operator=(const vector<value_type> &x) {
+    assign_from(x.data());
+    return *this;
+  }
+};
+template<>
+struct Concat<void> {
+  template<class T>
+  void assign_from(T x) { }
+  template<class T>
+  void assign_to(T x) { }
+  size_t size() { return 0; }
+};
+template<class...Ts>
+Concat<Ts...> concat(Ts&... args) {
+  return Concat<Ts...>({args...});
+}
+
+/* ================================================ */
+
+template<class Type>
+struct parameter_list {
+  vector<Type> sd;
+  vector<Type> bias;
+  Type time;
+  // From C++14 use 'auto' for return type
+  Concat<vector<Type>, vector<Type>, Type>
+  unlist() { return concat(sd, bias, time); }
+};
+
 template<class Type>
 struct data_likelihood {
   // PARAMETER_VECTOR(sd); // sd by data type
@@ -280,7 +347,8 @@ struct data_likelihood {
   SEXP obs_keep;
   SEXP con;
   int ntime;
-  data_likelihood(SEXP data) {
+  parameter_list<Type> pl;
+  data_likelihood(SEXP data, parameter_list<Type> pl) : pl(pl) {
     map = getListElement(data, "map"); // list
     obs = getListElement(data, "obs"); // list
     map_keep = getListElement(data, "map_keep"); // list
@@ -302,14 +370,11 @@ struct data_likelihood {
   }
   vector<Type> operator()(vector<Type> parms) {
     typedef vectorize::vector<Type> vec;
-    int n = parms.size();
-    vector<Type> sd( (n-1) / 2 );
-    vector<Type> bias( (n-1) / 2 );
-    for (int i=0; i<sd.size(); i++) {
-      sd[i] = parms[i];
-      bias[i] = parms[i+sd.size()];
-    }
-    Type time = parms[n-1]; // last
+    // Load parms to parameter list
+    pl.unlist() = parms;
+    vector<Type> sd = pl.sd;
+    vector<Type> bias = pl.bias;
+    Type time = pl.time;
     // Load data
     matrix<Type> m = getData(map, time);
     vector<Type> o = getData(obs, time);
@@ -389,15 +454,13 @@ Type objective_function<Type>::operator() ()
     PARAMETER_VECTOR(logsd); // obs
     PARAMETER_VECTOR(bias); // obs
     vector<Type> sd = exp(logsd);
-    data_likelihood<TMBad::ad_aug> dlik(this->data);
-    atomic::AtomicLocal<data_likelihood<TMBad::ad_aug> > F(dlik);
-    vector<Type> parms(sd.size() + bias.size() + 1);
-    for (int i=0; i<sd.size(); i++) {
-      parms[i] = sd[i]; parms[i+sd.size()] = bias[i];
-    }
+    parameter_list<Type> pl = {sd, bias, Type(0)};
+    data_likelihood<Type> dlik(this->data, pl);
+    atomic::AtomicLocal<data_likelihood<Type> > F(dlik);
     // Keep the old datlik begin and end for now (FIXME)
     for (int i=1; i<dlik.ntime-1; i++) {
-      parms[parms.size()-1] = Type(i);
+      pl.time = Type(i);
+      vector<Type> parms = pl.unlist();
       datlik.col(i).array() = F(parms);
     }
     // Store the old datlik begin and end
