@@ -414,21 +414,23 @@ Type objective_function<Type>::operator() ()
   }
 
   REPORT(datlik); // For debugging
-  // Matrix exponential
 
+  // Matrix exponential (maps vector to vector)
+  std::function< vector<Type>( vector<Type> ) > ExpGdt;
   // Sparse case:
   if (false) {
     Eigen::SparseMatrix<Type> G = Dx*Sew + Dy*Sns;  // Make generator
     Eigen::SparseMatrix<Type> Gdt = G * dt;
-    sparse_matrix_exponential::expQ<Type> ExpGdt(Gdt);
+    ExpGdt = sparse_matrix_exponential::expm_generator<Type>(Gdt);
+  } else {
+    // Dense separable case
+    matrix<Type> Gx = (Dx*dt)*Sx;
+    matrix<Type> Gy = (Dy*dt)*Sy;
+    ExpGdt = separable_matrix_exponential<Type>(Gx, Gy);
   }
 
-  // Dense separable case
-  matrix<Type> Gx = (Dx*dt)*Sx;
-  matrix<Type> Gy = (Dy*dt)*Sy;
-  separable_matrix_exponential<Type> ExpGdt(Gx, Gy);
-  
   // ==================================== HMM FILTER
+  typedef vectorize::vector<Type> vec; // For faster vectorized math
   matrix<Type> pred;
   matrix<Type> phi;
   vector<Type> psi;
@@ -455,14 +457,12 @@ Type objective_function<Type>::operator() ()
       // Data update
       int ind = (iobs(t)-1);
       vector<Type> d = datlik.col(ind);
-      vectorize::vector<Type> post =
-        vectorize::vector<Type>(d) * vectorize::vector<Type>(predtmp);
-      //vectorize::vector<Type> post = pred.col(t).cwiseProduct(datlik.col(ind)); // Element-wise product
+      vec post = vec(d) * vec(predtmp);
       psi(ind - 1) = post.sum();
       Rcout << psi(ind - 1) << "\n";
-      vectorize::vector<Type> post_normalized = (post / (psi(ind - 1) + 1e-20)); // Add small value to avoid division by zero
-      vector<Type> qw = post_normalized;
-      phi.col(t) = qw;
+      vec post_normalized = (post / (psi(ind - 1) + 1e-20)); // Add small value to avoid division by zero
+      vector<Type> qw = post_normalized; // TMB FIXME
+      phi.col(t).array() = qw;
     } else {
       // No data update
       phi.col(t) = pred.col(t);
