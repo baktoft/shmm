@@ -63,15 +63,15 @@ check.inp <- function(inp){
     inp <- set.default(inp, 'do.smoo', 1)
     inp <- set.default(inp, 'do.viterbi', 0)
     inp <- set.default(inp, 'maxm', 20)
-    inp <- set.default(inp, 'solvetype', 'implicit') # Other option: 'uniformisation' (slower)
+    inp <- set.default(inp, 'solvetype', 'separable') # Other option: 'sparse' (slower)
 
-    # Solvetype
-    if (inp$solvetype == 'uniformisation'){
-        inp$solvetypein <- 1
-    }
-    if (inp$solvetype == 'implicit'){
-        inp$solvetypein <- 2
-    }
+    ## # Solvetype
+    ## if (inp$solvetype == 'uniformisation'){
+    ##     inp$solvetypein <- 1
+    ## }
+    ## if (inp$solvetype == 'implicit'){
+    ##     inp$solvetypein <- 2
+    ## }
     
     # Set default land if unspecified
     if (!'land' %in% names(inp)){

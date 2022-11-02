@@ -152,7 +152,7 @@ make.obj <- function(inp, phase=1){
 make.datlist <- function(inp){
     datlist <- list(doviterbi=inp$do.viterbi,
                     datlik=inp$datlik$all,
-                    solvetype=inp$solvetypein,
+                    solvetype=inp$solvetype,
                     ns=inp$ns,
                     iobs=inp$iobs,
                     #isave=inp$isave,

@@ -416,17 +416,20 @@ Type objective_function<Type>::operator() ()
   REPORT(datlik); // For debugging
 
   // Matrix exponential (maps vector to vector)
+  DATA_STRING(solvetype);
   std::function< vector<Type>( vector<Type> ) > ExpGdt;
   // Sparse case:
-  if (false) {
+  if (solvetype == "sparse") {
     Eigen::SparseMatrix<Type> G = Dx*Sew + Dy*Sns;  // Make generator
     Eigen::SparseMatrix<Type> Gdt = G * dt;
     ExpGdt = sparse_matrix_exponential::expm_generator<Type>(Gdt);
-  } else {
+  } else if (solvetype == "separable") {
     // Dense separable case
     matrix<Type> Gx = (Dx*dt)*Sx;
     matrix<Type> Gy = (Dy*dt)*Sy;
     ExpGdt = separable_matrix_exponential<Type>(Gx, Gy);
+  } else {
+    Rf_error( ("solvetype='" + solvetype + "'" + " not valid").c_str() );
   }
 
   // ==================================== HMM FILTER
@@ -461,8 +464,7 @@ Type objective_function<Type>::operator() ()
       psi(ind - 1) = post.sum();
       Rcout << psi(ind - 1) << "\n";
       vec post_normalized = (post / (psi(ind - 1) + 1e-20)); // Add small value to avoid division by zero
-      vector<Type> qw = post_normalized; // TMB FIXME
-      phi.col(t).array() = qw;
+      phi.col(t).array() = post_normalized.array();
     } else {
       // No data update
       phi.col(t) = pred.col(t);
