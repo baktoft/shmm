@@ -1,0 +1,5 @@
+## TMBAD_FRAMEWORK: Because we need the sparse matrix exponential
+## TMB_SAFEBOUNDS: Detect out-of-bound bugs (NOT allowed by CRAN!)
+## TMB_EIGEN_DISABLE_WARNINGS: Disable nuisance warnings (NOT allowed by CRAN!)
+## FIXME: Figure out how to use 'EIGEN_USE_BLAS' on windows
+PKG_CPPFLAGS = -DTMBAD_FRAMEWORK -DTMB_EIGEN_DISABLE_WARNINGS -DTMB_SAFEBOUNDS
