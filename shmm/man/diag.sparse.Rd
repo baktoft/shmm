@@ -12,4 +12,6 @@ diag.sparse(n)
 \value{
 Sparse identity matrix
 }
-
+\description{
+Create sparse identity matrix
+}

@@ -14,4 +14,6 @@ ind2sub(ind, nrows)
 \value{
 Subscripts
 }
-
+\description{
+Linear index to subscripts
+}

@@ -12,4 +12,6 @@ make.generator(inp)
 \value{
 Generator as sparse matrix.
 }
-
+\description{
+Create generator
+}

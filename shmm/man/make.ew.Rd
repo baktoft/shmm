@@ -16,4 +16,6 @@ make.ew(n, nx, land)
 \value{
 Skeleton of generator matrix for east-west movement as sparse matrix
 }
-
+\description{
+Make skeleton of generator matrix for east-west movement
+}

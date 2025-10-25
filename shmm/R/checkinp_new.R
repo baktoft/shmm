@@ -1,0 +1,118 @@
+# Spatial hidden Markov model (SHMM)
+#    Copyright (C) 2015-2016  Martin Waever Pedersen, mawp@dtu.dk or wpsgodd@gmail.com
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+#' @name check.inp
+#' @title Check list of input variables
+#' @details Check list of input variables
+#' @param inp List of input variables, see details for required variables.
+#' @return An updated list of input variables checked for consistency and with defaults added.
+#' @examples
+#' inp <- check.inp(inp)
+#' @export
+check.inp_new <- function(inp){
+
+    # Check grid
+    if (!'grid' %in% names(inp)){
+        stop('grid not defined!')
+    } else {
+        if (!'xx' %in% names(inp$grid)){
+            stop('xx not specified in inp$grid!')
+        }
+        if (!'yy' %in% names(inp$grid)){
+            stop('yy not specified in inp$grid!')
+        }
+        if (!'nx' %in% names(inp$grid)){
+            stop('nx not specified in inp$grid!')
+        }
+        if (!'ny' %in% names(inp$grid)){
+            stop('ny not specified in inp$grid!')
+        }
+        if (!'dx' %in% names(inp$grid)){
+            stop('dx not specified in inp$grid!')
+        }
+        if (!'dy' %in% names(inp$grid)){
+            stop('dy not specified in inp$grid!')
+        }
+        #inp$grid$n <- inp$grid$nx * inp$grid$ny # Only true if no land
+    }
+
+    fac <- 24*60*60
+    inp$scriptname <- 'shmm'
+    # Set defaults that were not manually defined
+    inp <- set.default(inp, 'dt', 1)
+    inp <- set.default(inp, 'datlik', list())
+    inp <- set.default(inp, 'do.estimation', TRUE) # FALSE to save time
+    if (!inp$do.estimation){
+        inp$do.sd.report <- FALSE
+    }
+    inp <- set.default(inp, 'do.sd.report', FALSE) # FALSE to save time
+    inp <- set.default(inp, 'do.smoo', 1)
+    inp <- set.default(inp, 'do.viterbi', 0)
+    inp <- set.default(inp, 'maxm', 20)
+    inp <- set.default(inp, 'solvetype', 'separable') # Other option: 'sparse' (slower)
+
+    ## # Solvetype
+    ## if (inp$solvetype == 'uniformisation'){
+    ##     inp$solvetypein <- 1
+    ## }
+    ## if (inp$solvetype == 'implicit'){
+    ##     inp$solvetypein <- 2
+    ## }
+    
+    # Set default land if unspecified
+    if (!'land' %in% names(inp)){
+        warning('Land matrix not specified! use find.land() if relevant.')
+    }
+    #inp <- set.default(inp, 'land', matrix(FALSE, inp$grid$ny, inp$grid$nx))
+    inp$land <- matrix(FALSE, inp$grid$ny, inp$grid$nx)
+    inp$grid$n <- sum(!inp$land)
+    
+    # Add generator details
+    inp <- add.gen(inp)
+
+    # Observation time vectors to be used
+    # inp$obstimeuse <- inp$obstime[inp$datatypes]
+
+    # Datlik time vector
+    inp$obstimeall <- sort(unique(unlist(as.numeric(inp$obstimeuse)))) / fac
+    dt <- min(diff(inp$obstimeall))
+    inp$datliktime <- seq(min(inp$obstimeall), max(inp$obstimeall), by=dt)
+    inp$date <- as.POSIXct(inp$datliktime*24*60*60, origin='1970-01-01')
+    
+    # Calculate time vector
+    timerange <- range(unlist(as.numeric(inp$obstimeuse))) / fac
+    if (inp$solvetype == 'uniformisation'){
+        F <- max.rate(inp$gen$Dx, inp$gen$Dy)
+        maxF <- m2rate(inp$gen$m)
+        dt <- maxF / F
+        inp$dt <- 1/ceiling(1/dt) # Find a "proper" dt
+    }
+    if (inp$solvetype == 'implicit'){
+        inp$dt <- min(diff(inp$obstimeall))
+    }
+    inp$time <- seq(timerange[1], timerange[2], by=inp$dt)
+    inp$ns <- length(inp$time)
+
+    # Calculate iobs
+    inp$iobs <- match(inp$time, inp$datliktime, nomatch=0)
+
+    # Calculate isave (indices to save)
+    inp$savetime <- seq(min(inp$time), max(inp$time), by=1) # dt of 1 day
+    inp$isave <- match(inp$time, inp$savetime, nomatch=0)
+
+    return(inp)
+}

@@ -14,4 +14,6 @@
 \value{
 Maximum rate
 }
-
+\description{
+Calculate maximum rate
+}

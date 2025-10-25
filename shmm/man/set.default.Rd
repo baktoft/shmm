@@ -16,4 +16,6 @@ set.default(inpin, key, val)
 \value{
 Modified inpin
 }
-
+\description{
+Set default parameter value
+}

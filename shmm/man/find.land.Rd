@@ -14,4 +14,6 @@ find.land(nas, do.plot = FALSE)
 \value{
 Matrix containing TRUE at land and FALSE at connected water.
 }
-
+\description{
+Function to remove lakes etc.
+}

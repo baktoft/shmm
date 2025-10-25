@@ -12,4 +12,6 @@ m2rate(m)
 \value{
 the rate corresponding to m.
 }
-
+\description{
+Calculate rate from m
+}

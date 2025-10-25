@@ -20,4 +20,6 @@ add.gen(inp)
 \value{
 Generator as sparse matrix.
 }
-
+\description{
+Add gen key to inp
+}

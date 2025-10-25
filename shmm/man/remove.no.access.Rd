@@ -18,4 +18,6 @@ remove.no.access(S, n, nx, land)
 \value{
 Generator as sparse matrix with inaccessible cells removed.
 }
-
+\description{
+Remove cells from generator that are inaccessible
+}

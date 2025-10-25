@@ -102,6 +102,11 @@ fit.shmm <- function(inp, dbg=0){
 ## > tmp <- reorder_time(tmp,FALSE) ## Change back to bad order
 ## > identical(tmp, inp$datlik)
 ## [1] TRUE
+
+
+#' @name reorder_time
+#' @title Reorder time...
+#' @export
 reorder_time <- function(x, last=TRUE) {
     if (is.list(x))
         return (lapply(x, reorder_time, last=last))

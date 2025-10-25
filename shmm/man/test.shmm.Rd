@@ -4,7 +4,7 @@
 \alias{test.shmm}
 \title{Example of a shmm analysis.}
 \usage{
-test.shmm(nobs = 40)
+test.shmm(nobs = 40, do.viterbi = 0, dbg = 0)
 }
 \arguments{
 \item{nobs}{Number of observations to simulate}
@@ -12,10 +12,12 @@ test.shmm(nobs = 40)
 \value{
 A result report as given by fit.shmm().
 }
+\description{
+Example of a shmm analysis.
+}
 \details{
 Loads a data set, fits the model, plots the results.
 }
 \examples{
 rep <- test.shmm()
 }
-

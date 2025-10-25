@@ -18,7 +18,9 @@ plotshmm.distr(rep, name = "smoo", sleep = 0.05, add.map = TRUE)
 \value{
 Noting.
 }
+\description{
+Plots the distribution indicated by name
+}
 \details{
 Distribution is plotted as an "animation"
 }
-

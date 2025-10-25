@@ -2,14 +2,14 @@
 % Please edit documentation in R/Description.R
 \docType{package}
 \name{shmm}
-\alias{shmm}
 \alias{shmm-package}
+\alias{shmm}
 \title{Fits a spatial hidden Markov model to tag data}
+\description{
+Fit spatial HMMs to different types of movement data
+}
 \examples{
 rep <- test.shmm()
-}
-\author{
-Martin W. Pedersen \email{mawp@dtu.dk}
 }
 \references{
 \url{https://github.com/mawp/shmm/}
@@ -17,7 +17,9 @@ Martin W. Pedersen \email{mawp@dtu.dk}
 \seealso{
 \code{\link{test.shmm}}
 }
+\author{
+Martin W. Pedersen \email{mawp@dtu.dk}
+}
 \keyword{data,}
 \keyword{geolocation}
 \keyword{movement}
-

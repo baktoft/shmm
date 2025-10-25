@@ -16,4 +16,6 @@ make.ns(n, nx, land)
 \value{
 Skeleton of generator matrix for north-south movement as sparse matrix
 }
-
+\description{
+Make skeleton of generator matrix for north-south movement
+}

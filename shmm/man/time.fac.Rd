@@ -9,4 +9,6 @@
 \value{
 Number of seconds in a day
 }
-
+\description{
+Number of seconds in a day
+}

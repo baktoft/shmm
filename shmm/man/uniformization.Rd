@@ -14,4 +14,6 @@ uniformization(A, dt)
 \value{
 Transition probability matrix as sparse matrix
 }
-
+\description{
+Calculate the matrix exponential of a generator matrix using the uniformization algorithm
+}

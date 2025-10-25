@@ -14,4 +14,6 @@ sumshmm.parest(rep, numdigits = 8)
 \value{
 data.frame containing parameter estimates.
 }
-
+\description{
+Parameter estimates of a fit.shmm() run.
+}

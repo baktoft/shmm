@@ -16,10 +16,12 @@ sim.shmm(inp, nobs = 40, dt = NULL)
 \value{
 A list containing the simulated data.
 }
+\description{
+Simulate movement data
+}
 \details{
 Simulates data
 }
 \examples{
 sim <- sim.shmm(inp)
 }
-

@@ -14,4 +14,6 @@
 \value{
 The requested distribution as an 3D-array.
 }
-
+\description{
+Format distribution from flattened time x vector (2D) to time x matrix (3D).
+}
